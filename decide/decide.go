@@ -3,6 +3,7 @@ package decide
 import (
 	"bytes"
 	"html/template"
+	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -10,20 +11,21 @@ import (
 
 func normalize(input string) []string {
 	input = strings.TrimSpace(input)
-	items := strings.Split(input, " ")
+	items := strings.Split(input, ",")
 
 	for i, item := range items {
-		items[i] = strings.ToLower(item)
+		word := strings.TrimSpace(item)
+		items[i] = strings.ToLower(word)
 	}
 
 	return items
 }
 
-func readInLine(line string) (string, []string) {
-	inputDataForSeed := time.Now().UnixNano()
+func readDecide(line string) (string, []string) {
+	today := time.Now()
 	choices := normalize(line)
 
-	rand.Seed(inputDataForSeed)
+	rand.Seed(today.UnixNano())
 
 	return choices[rand.Intn(len(choices))], choices
 }
@@ -32,34 +34,29 @@ func Decide(q string) string {
 	const replyTmpl = `
 ### Decision
 
-Original Query
-> {{ .Query }}
+**{{ .Answer }}**
 
-Decided!
-{{ .Decision }}
-
-Choices
-{{ _, choice := range .Choices }}
-	- {{ .choice }}
-{{ end }}
+Choices Given:
+{{ range .Choices }}
+ - {{ . }}
+{{end}}
 `
 
-	t := template.Must(template.New("reply").Parse(replyTmpl))
-	choice, entrants := readInLine(q)
+	t := template.Must(template.New("decide").Parse(replyTmpl))
+	choice, list := readDecide(q)
 
 	reply := struct {
-		Query    string
-		Decision string
-		Choices  []string
+		Answer  string
+		Choices []string
 	}{
-		Query:    q,
-		Decision: choice,
-		Choices:  entrants,
+		Answer:  choice,
+		Choices: list,
 	}
 
 	buf := bytes.NewBuffer(nil)
 	if err := t.Execute(buf, reply); err != nil {
-		return ""
+		log.Println("OH NOES!")
+		return "error, please try again later"
 	}
 
 	return buf.String()
