@@ -19,14 +19,14 @@ func find(guildId string) (*VoiceClient, error) {
 	return client, nil
 }
 
-func findOrCreate(s *discordgo.Session, guildId, channelId string) (*VoiceClient, error) {
-	client, err := find(guildId)
+func findOrCreate(d *discord, guild *discordgo.Guild, channel *discordgo.Channel) (*VoiceClient, error) {
+	client, err := find(guild.ID)
 	if err != nil {
-		client = newVoiceClient(s)
-		clients[guildId] = client
+		client = newVoiceClient(d)
+		clients[guild.ID] = client
 	}
 
-	err = client.connectVoice(guildId, channelId)
+	err = client.connectVoice(guild.ID, channel.ID)
 
 	return client, err
 }
@@ -39,15 +39,16 @@ func stripMessage(prefix, msg string) string {
 }
 
 func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
-	guildId, channelId, err := derefMessageOrigin(s, m)
+	discord := &discord{s}
+	guild, channel, err := discord.getMessageOrigin(m)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to find origin of command")
 	}
 
 	if strings.Contains(m.Content, "summon") {
-		guildId, channelId, err = derefUserVoiceChannel(s, m)
-		_, err := findOrCreate(s, guildId, channelId)
+		guild, channel, err = discord.getUserVoiceChannel(m)
+		_, err := findOrCreate(discord, guild, channel)
 
 		if err != nil {
 			return errors.Wrap(err, "failed to connect to voice channel")
@@ -55,18 +56,18 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 	}
 
 	if strings.Contains(m.Content, "disconnect") {
-		client, ok := clients[guildId]
+		client, ok := clients[guild.ID]
 		if !ok {
 			return nil
 		}
 
 		// cleanup
 		client.disconnect()
-		delete(clients, guildId)
+		delete(clients, guild.ID)
 	}
 
 	if strings.Contains(m.Content, "play") {
-		client, err := find(guildId)
+		client, err := find(guild.ID)
 		if err != nil {
 			return errors.Wrap(err, "failed to add song to queue")
 		}
@@ -79,7 +80,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 	}
 
 	if strings.Contains(m.Content, "resume") {
-		client, err := find(guildId)
+		client, err := find(guild.ID)
 		if err != nil {
 			return nil
 		}
@@ -88,7 +89,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 	}
 
 	if strings.Contains(m.Content, "stop") {
-		client, err := find(guildId)
+		client, err := find(guild.ID)
 		if err != nil {
 			return nil
 		}
@@ -97,7 +98,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 	}
 
 	if strings.Contains(m.Content, "skip") {
-		client, err := find(guildId)
+		client, err := find(guild.ID)
 		if err != nil {
 			return nil
 		}

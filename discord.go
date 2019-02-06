@@ -5,48 +5,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-func derefMessageOrigin(s *discordgo.Session, m *discordgo.MessageCreate) (string, string, error) {
-	var (
-		err     error
-		channel *discordgo.Channel
-		guild   *discordgo.Guild
-	)
-
-	channel, err = s.State.Channel(m.ChannelID)
-	if err != nil {
-		return "", "", err
-	}
-
-	guild, err = s.State.Guild(channel.GuildID)
-	if err != nil {
-		return "", "", err
-	}
-
-	return guild.ID, channel.ID, nil
+type discord struct {
+	*discordgo.Session
 }
 
-func derefUserVoiceChannel(s *discordgo.Session, m *discordgo.MessageCreate) (string, string, error) {
-	var (
-		err     error
-		channel *discordgo.Channel
-		guild   *discordgo.Guild
-	)
+func (d *discord) getMessageOrigin(msg *discordgo.MessageCreate) (*discordgo.Guild, *discordgo.Channel, error) {
+	channel, err := d.Session.State.Channel(msg.ChannelID)
 
-	channel, err = s.State.Channel(m.ChannelID)
 	if err != nil {
-		return "", "", err
+		return nil, nil, err
 	}
 
-	guild, err = s.State.Guild(channel.GuildID)
-	if err != nil {
-		return "", "", err
-	}
+	guild, err := d.Session.State.Guild(channel.GuildID)
 
-	for _, vs := range guild.VoiceStates {
-		if vs.UserID == m.Author.ID {
-			return guild.ID, vs.ChannelID, nil
+	return guild, channel, err
+}
+
+func (d *discord) getUserVoiceChannel(msg *discordgo.MessageCreate) (*discordgo.Guild, *discordgo.Channel, error) {
+	if guild, channel, err := d.getMessageOrigin(msg); err == nil {
+		for _, vs := range guild.VoiceStates {
+			if vs.UserID == msg.Author.ID {
+				channel, err = d.Session.Channel(vs.ChannelID)
+				return guild, channel, err
+			}
 		}
+	} else {
+		return nil, nil, err
 	}
 
-	return "", "", errors.New("user is not in a voice channel")
+	return nil, nil, errors.New("user is not in any voice channel")
 }

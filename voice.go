@@ -22,7 +22,7 @@ const (
 )
 
 type VoiceClient struct {
-	discord    *discordgo.Session
+	discord    *discord
 	voice      *discordgo.VoiceConnection
 	history    *lane.Queue
 	queue      *lane.Queue
@@ -46,9 +46,9 @@ func getYoutubeDownloadLink(url string) (*url.URL, error) {
 	return link, yterr
 }
 
-func newVoiceClient(s *discordgo.Session) *VoiceClient {
+func newVoiceClient(d *discord) *VoiceClient {
 	return &VoiceClient{
-		discord:    s,
+		discord:    d,
 		history:    lane.NewQueue(),
 		queue:      lane.NewQueue(),
 		pcmChannel: make(chan []int16, 2),
