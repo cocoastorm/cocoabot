@@ -1,12 +1,50 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/pkg/errors"
 )
 
 type discord struct {
 	*discordgo.Session
+}
+
+func (d *discord) getGuildUserRoles(guildID, userID string) ([]*discordgo.Role, error) {
+	var roles []*discordgo.Role
+
+	member, err := d.Session.GuildMember(guildID, userID)
+	if err != nil {
+		return roles, err
+	}
+
+	guild, err := d.Session.Guild(guildID)
+	if err != nil {
+		return roles, err
+	}
+
+	for _, guildRole := range guild.Roles {
+		for _, roleID := range member.Roles {
+			if guildRole.ID == roleID {
+				roles = append(roles, guildRole)
+			}
+		}
+	}
+
+	return roles, err
+}
+
+func (d *discord) hasRole(role, guildID, userID string) bool {
+	if roles, err := d.getGuildUserRoles(guildID, userID); err == nil {
+		for _, r := range roles {
+			if strings.ToLower(r.Name) == strings.ToLower(role) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (d *discord) getMessageOrigin(msg *discordgo.MessageCreate) (*discordgo.Guild, *discordgo.Channel, error) {
