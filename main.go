@@ -66,6 +66,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	allowed := isAllowed(s, guild.ID, m.Author.ID)
 	if !allowed {
 		log.Println("user is not allowed to command bot")
+		return
 	}
 
 	// Check if the message is the "decide" command
