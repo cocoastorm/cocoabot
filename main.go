@@ -31,6 +31,18 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 	s.UpdateStatus(0, "!cocoabot")
 }
 
+func isAllowed(session *discordgo.Session, guildID, userID string) bool {
+	d := discord{session}
+
+	for _, allowedRole := range config.Roles {
+		if ok := d.hasRole(allowedRole, guildID, userID); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
 // This function will be called every time a new
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -44,6 +56,19 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	// Check if the user is allowed to use the bot
+	d := discord{s}
+	guild, _, err := d.getMessageOrigin(m)
+	if err != nil {
+		return
+	}
+
+	allowed := isAllowed(s, guild.ID, m.Author.ID)
+	if !allowed {
+		log.Println("user is not allowed to command bot")
+	}
+
+	// Check if the message is the "decide" command
 	if strings.Contains(m.Content, "!decide") {
 		decision := Decide(strings.TrimPrefix(m.Content, "!decide"))
 
@@ -53,6 +78,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
+	// Check if the message is one of our music commands
 	music := []string{
 		"summon",
 		"disconnect",
