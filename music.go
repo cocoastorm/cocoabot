@@ -73,10 +73,6 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		}
 
 		client.QueueVideo(stripMessage("!play", m.Content))
-
-		if !client.stop {
-			client.processQueue()
-		}
 	}
 
 	if strings.Contains(m.Content, "resume") {
