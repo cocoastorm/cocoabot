@@ -48,12 +48,12 @@ func isAllowed(session *discordgo.Session, guildID, userID string) bool {
 // This function will be called every time a new
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// Ignore all messages created by the bot itself
+	// ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	// Check if the message is one of our commands
+	// check if the message is one of our commands
 	if !strings.HasPrefix(m.Content, "!") {
 		return
 	}
@@ -64,7 +64,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// Check if the user is allowed to use the bot
+	// check if the user is allowed to use the bot
 	isServerOwner := guild.OwnerID == m.Author.ID
 	hasAllowedRole := isAllowed(s, guild.ID, m.Author.ID)
 
@@ -78,7 +78,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// Check if the message is the "decide" command
+	// check if the message is the "decide" command
 	if strings.Contains(m.Content, "!decide") {
 		decision := Decide(strings.TrimPrefix(m.Content, "!decide"))
 
@@ -88,7 +88,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	// Check if the message is one of our music commands
+	// check if the message is one of our music commands
 	music := []string{
 		"summon",
 		"disconnect",
@@ -136,7 +136,7 @@ func main() {
 		log.Println(err)
 	}
 
-	// Wait here until CTRL-C or other term signal is received.
+	// wait here until CTRL-C or other term signal is received.
 	fmt.Println("cocoabot is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)

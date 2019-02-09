@@ -38,7 +38,10 @@ func (d *discord) getGuildUserRoles(guildID, userID string) ([]*discordgo.Role, 
 func (d *discord) hasRole(role, guildID, userID string) bool {
 	if roles, err := d.getGuildUserRoles(guildID, userID); err == nil {
 		for _, r := range roles {
-			if strings.ToLower(r.Name) == strings.ToLower(role) {
+			role = strings.ToLower(role)
+			id, name := strings.ToLower(r.ID), strings.ToLower(r.Name)
+
+			if id == role || name == role {
 				return true
 			}
 		}
