@@ -65,7 +65,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	allowed := isAllowed(s, guild.ID, m.Author.ID)
 	if !allowed {
-		log.Println("user is not allowed to command bot")
+		msg := msgUserNotAllowed(m.Author)
+		if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
+			log.Println(err)
+		}
+
+		log.Printf("%s is not allowed to use bot", m.Author.Username)
 		return
 	}
 
