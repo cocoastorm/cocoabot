@@ -23,11 +23,11 @@ const maxBytes int = (frameSize * 2) * 2
 func SendPCM(v *discordgo.VoiceConnection, pcm <-chan []int16) {
 	// prevent any other process from sending data
 	mu.Lock()
+	defer mu.Unlock()
 
 	// pcm data has been consumed/finished
 	// unlock the mutex
 	if sendpcm || pcm == nil {
-		mu.Unlock()
 		return
 	}
 

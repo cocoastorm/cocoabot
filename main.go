@@ -31,19 +31,54 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 	s.UpdateStatus(0, "!cocoabot")
 }
 
+// This function checks if the user is allowed to use the bot
+// By cross referencing their guild roles with the configured allowed roles.
+func isAllowed(session *discordgo.Session, guildID, userID string) bool {
+	d := discord{session}
+
+	for _, allowedRole := range config.Roles {
+		if ok := d.hasRole(allowedRole, guildID, userID); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
 // This function will be called every time a new
 // message is created on any channel that the authenticated bot has access to.
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
-	// Ignore all messages created by the bot itself
+	// ignore all messages created by the bot itself
 	if m.Author.ID == s.State.User.ID {
 		return
 	}
 
-	// Check if the message is one of our commands
+	// check if the message is one of our commands
 	if !strings.HasPrefix(m.Content, "!") {
 		return
 	}
 
+	d := discord{s}
+	guild, _, err := d.getMessageOrigin(m)
+	if err != nil {
+		return
+	}
+
+	// check if the user is allowed to use the bot
+	isServerOwner := guild.OwnerID == m.Author.ID
+	hasAllowedRole := isAllowed(s, guild.ID, m.Author.ID)
+
+	if !isServerOwner && !hasAllowedRole {
+		msg := msgUserNotAllowed(m.Author)
+		if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
+			log.Println(err)
+		}
+
+		log.Printf("%s is not allowed to use bot", m.Author.Username)
+		return
+	}
+
+	// check if the message is the "decide" command
 	if strings.Contains(m.Content, "!decide") {
 		decision := Decide(strings.TrimPrefix(m.Content, "!decide"))
 
@@ -53,6 +88,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
+	// check if the message is one of our music commands
 	music := []string{
 		"summon",
 		"disconnect",
@@ -100,7 +136,7 @@ func main() {
 		log.Println(err)
 	}
 
-	// Wait here until CTRL-C or other term signal is received.
+	// wait here until CTRL-C or other term signal is received.
 	fmt.Println("cocoabot is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
@@ -108,7 +144,7 @@ func main() {
 
 	// kill all active discord sessions
 	for _, client := range clients {
-		client.disconnect()
+		client.Disconnect()
 	}
 
 	dg.Close()
