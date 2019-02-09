@@ -68,11 +68,11 @@ func (vc *VoiceClient) connectVoice(guildId, channelId string) error {
 	return nil
 }
 
-func (vc *VoiceClient) disconnect() {
+func (vc *VoiceClient) Disconnect() {
 	close(vc.pcmChannel)
 
 	if vc.voice != nil {
-		vc.voice.Close()
+		vc.voice.Disconnect()
 	}
 }
 

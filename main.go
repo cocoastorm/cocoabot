@@ -144,7 +144,7 @@ func main() {
 
 	// kill all active discord sessions
 	for _, client := range clients {
-		client.disconnect()
+		client.Disconnect()
 	}
 
 	dg.Close()

@@ -62,7 +62,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		}
 
 		// cleanup
-		client.disconnect()
+		client.Disconnect()
 		delete(clients, guild.ID)
 	}
 
