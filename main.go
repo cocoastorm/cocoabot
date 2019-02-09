@@ -31,6 +31,8 @@ func ready(s *discordgo.Session, event *discordgo.Ready) {
 	s.UpdateStatus(0, "!cocoabot")
 }
 
+// This function checks if the user is allowed to use the bot
+// By cross referencing their guild roles with the configured allowed roles.
 func isAllowed(session *discordgo.Session, guildID, userID string) bool {
 	d := discord{session}
 
@@ -56,15 +58,17 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// Check if the user is allowed to use the bot
 	d := discord{s}
 	guild, _, err := d.getMessageOrigin(m)
 	if err != nil {
 		return
 	}
 
-	allowed := isAllowed(s, guild.ID, m.Author.ID)
-	if !allowed {
+	// Check if the user is allowed to use the bot
+	isServerOwner := guild.OwnerID == m.Author.ID
+	hasAllowedRole := isAllowed(s, guild.ID, m.Author.ID)
+
+	if !isServerOwner && !hasAllowedRole {
 		msg := msgUserNotAllowed(m.Author)
 		if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
 			log.Println(err)
