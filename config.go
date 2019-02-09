@@ -8,6 +8,10 @@ type Config struct {
 }
 
 func initConfig(c *Config) {
+	if c == nil {
+		return
+	}
+
 	c.BotToken = os.Getenv("BOT_TOKEN")
 	c.Roles = []string{
 		"music",
