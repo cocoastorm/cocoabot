@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/oleiade/lane"
@@ -66,6 +67,13 @@ func (vc *VoiceClient) connectVoice(guildId, channelId string) error {
 }
 
 func (vc *VoiceClient) Disconnect() {
+	if vc.isPlaying {
+		vc.StopVideo()
+
+		// wait a little bit~
+		time.Sleep(250 * time.Millisecond)
+	}
+
 	close(vc.pcmChannel)
 
 	if vc.voice != nil {
@@ -112,6 +120,7 @@ func (vc *VoiceClient) QueueVideo(link string) (string, error) {
 func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
+	// fetch music stream with http
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println(err)
@@ -123,6 +132,7 @@ func (vc *VoiceClient) playVideo(url string) {
 		log.Println("status non-200")
 	}
 
+	// stream input to ffmpeg
 	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
 	run.Stdin = resp.Body
 
@@ -137,6 +147,8 @@ func (vc *VoiceClient) playVideo(url string) {
 		fmt.Printf("ffmpeg failed to start: %s\n", err.Error())
 		return
 	}
+
+	defer run.Process.Kill()
 
 	audiobuf := make([]int16, frameSize*channels)
 
@@ -157,7 +169,6 @@ func (vc *VoiceClient) playVideo(url string) {
 		}
 
 		if vc.stop == true || vc.skip == true {
-			run.Process.Kill()
 			log.Println("stopped playing")
 			break
 		}
