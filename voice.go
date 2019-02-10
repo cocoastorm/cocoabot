@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -32,6 +34,24 @@ type VoiceClient struct {
 	skip       bool
 	stop       bool
 	isPlaying  bool
+}
+
+func isYouTubeLink(link string) bool {
+	if strings.Contains(link, "youtu") || strings.ContainsAny(link, "\"?&/<%=") {
+		matchers := []*regexp.Regexp{
+			regexp.MustCompile(`(?:v|embed|watch\?v)(?:=|/)([^"&?/=%]{11})`),
+			regexp.MustCompile(`(?:=|/)([^"&?/=%]{11})`),
+			regexp.MustCompile(`([^"&?/=%]{11})`),
+		}
+
+		for _, re := range matchers {
+			if isMatch := re.MatchString(link); isMatch {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
@@ -98,13 +118,24 @@ func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
 
-func (vc *VoiceClient) QueueVideo(link string) (string, error) {
-	info, err := ytdl.GetVideoInfo(link)
+func (vc *VoiceClient) QueueVideo(query string) (string, error) {
+	// if it's not a youtube link
+	// assume they're the title of a youtube video and search for it
+	if !isYouTubeLink(query) {
+		resp, err := searchByKeywords(query)
+		if err != nil {
+			return "", err
+		}
+
+		query = resp.VideoId
+	}
+
+	info, err := ytdl.GetVideoInfo(query)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, link)
+	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, query)
 
 	audioLink, err := getYouTubeAudioLink(info)
 	if err != nil {
