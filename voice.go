@@ -33,17 +33,14 @@ type VoiceClient struct {
 	isPlaying  bool
 }
 
-func getYoutubeDownloadLink(url string) (*url.URL, error) {
-	vid, err := ytdl.GetVideoInfo(url)
-	if err != nil {
-		return nil, err
-	}
+func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
+	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
 
-	vid.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
+	// TODO: better selection of which format/stream
+	audioFormat := info.Formats[0]
+	link, err := info.GetDownloadURL(audioFormat)
 
-	link, yterr := vid.GetDownloadURL(vid.Formats[0])
-
-	return link, yterr
+	return link, err
 }
 
 func newVoiceClient(d *discord) *VoiceClient {
@@ -93,19 +90,23 @@ func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
 
-func (vc *VoiceClient) QueueVideo(youtubeLink string) {
-	fmt.Printf("Queuing Video: %s\n", youtubeLink)
-
-	link, err := getYoutubeDownloadLink(youtubeLink)
+func (vc *VoiceClient) QueueVideo(link string) (string, error) {
+	info, err := ytdl.GetVideoInfo(link)
 	if err != nil {
-		log.Println(err)
-		return
+		return "", err
 	}
 
-	log.Printf("[youtube] %s\n", youtubeLink)
+	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, link)
 
-	vc.queue.Enqueue(link.String())
+	audioLink, err := getYouTubeAudioLink(info)
+	if err != nil {
+		return "", err
+	}
+
+	vc.queue.Enqueue(audioLink)
 	vc.processQueue()
+
+	return info.Title, nil
 }
 
 func (vc *VoiceClient) playVideo(url string) {
