@@ -47,6 +47,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		return errors.Wrap(err, "failed to find origin of command")
 	}
 
+	// !summon
 	if strings.Contains(m.Content, "summon") {
 		guild, channel, err = discord.getUserVoiceChannel(m)
 		_, err := findOrCreate(discord, guild, channel)
@@ -62,6 +63,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		}
 	}
 
+	// !disconnect
 	if strings.Contains(m.Content, "disconnect") {
 		client, ok := clients[guild.ID]
 		if !ok {
@@ -73,6 +75,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		delete(clients, guild.ID)
 	}
 
+	// !play
 	if strings.Contains(m.Content, "play") {
 		client, err := find(guild.ID)
 		if err != nil {
@@ -100,6 +103,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		}
 	}
 
+	// !resume
 	if strings.Contains(m.Content, "resume") {
 		client, err := find(guild.ID)
 		if err != nil {
@@ -109,6 +113,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		client.ResumeVideo()
 	}
 
+	// !stop
 	if strings.Contains(m.Content, "stop") {
 		client, err := find(guild.ID)
 		if err != nil {
@@ -118,6 +123,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		client.StopVideo()
 	}
 
+	// !skip
 	if strings.Contains(m.Content, "skip") {
 		client, err := find(guild.ID)
 		if err != nil {
