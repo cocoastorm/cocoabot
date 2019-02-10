@@ -104,7 +104,7 @@ func (vc *VoiceClient) QueueVideo(link string) (string, error) {
 	}
 
 	vc.queue.Enqueue(audioLink.String())
-	vc.processQueue()
+	go vc.processQueue()
 
 	return info.Title, nil
 }
