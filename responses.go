@@ -19,7 +19,7 @@ func msgVoiceJoinFail(user *discordgo.User) string {
 }
 
 func msgQueueVideo(videoTitle string) string {
-	msg := fmt.Sprintf("Got it! Adding %s to the queue.", videoTitle)
+	msg := fmt.Sprintf("Got it! Adding \"%s\" to the queue.", videoTitle)
 
 	return msg
 }
