@@ -136,6 +136,8 @@ func main() {
 		log.Println(err)
 	}
 
+	defer dg.Close()
+
 	// wait here until CTRL-C or other term signal is received.
 	fmt.Println("cocoabot is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
@@ -146,6 +148,4 @@ func main() {
 	for _, client := range clients {
 		client.Disconnect()
 	}
-
-	dg.Close()
 }
