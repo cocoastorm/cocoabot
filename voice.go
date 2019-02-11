@@ -56,6 +56,10 @@ func isYouTubeLink(link string) bool {
 }
 
 func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
+	if len(info.Formats) == 0 {
+		return &url.URL{}, errors.New("failed to get info from youtube")
+	}
+
 	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
 
 	// TODO: better selection of which format/stream
@@ -167,7 +171,7 @@ func (vc *VoiceClient) playVideo(url string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Println("status non-200")
+		log.Printf("http status %d (non-200)", resp.StatusCode)
 	}
 
 	// stream input to ffmpeg
