@@ -85,12 +85,6 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		originURL := stripMessage("!play", m.Content)
 		title, err := client.QueueVideo(originURL)
 
-		msg := msgQueueVideo(title)
-		if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
-			log.Println(err)
-			return err
-		}
-
 		if err != nil {
 			msg := msgQueueVideoFail(originURL)
 
@@ -100,6 +94,12 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 			}
 
 			return errors.Wrap(err, "failed to add song to queue")
+		}
+
+		msg := msgQueueVideo(title)
+		if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
+			log.Println(err)
+			return err
 		}
 	}
 
