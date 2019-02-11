@@ -112,11 +112,13 @@ func main() {
 
 	initConfig(&config)
 
+	// check if discord bot token exists
 	if config.BotToken == "" && token == "" {
 		fmt.Println("No token provided. Please run: cocoabot -t <bot token>")
 		return
 	}
 
+	// check if token was given as a cmd argument instead
 	if token != "" {
 		config.BotToken = token
 	}

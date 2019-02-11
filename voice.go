@@ -15,6 +15,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/oleiade/lane"
+	"github.com/pkg/errors"
 	"github.com/rylio/ytdl"
 )
 
@@ -122,6 +123,12 @@ func (vc *VoiceClient) QueueVideo(query string) (string, error) {
 	// if it's not a youtube link
 	// assume they're the title of a youtube video and search for it
 	if !isYouTubeLink(query) {
+		// check if an API Key was configured
+		// if it isn't searching can't be done, so quit early
+		if config.YouTubeKey == "" {
+			return "", errors.New("youtube searching has not been configured, needs API key")
+		}
+
 		resp, err := searchByKeywords(query)
 		if err != nil {
 			return "", err
