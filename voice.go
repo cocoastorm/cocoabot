@@ -8,9 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -35,24 +33,6 @@ type VoiceClient struct {
 	skip       bool
 	stop       bool
 	isPlaying  bool
-}
-
-func isYouTubeLink(link string) bool {
-	if strings.Contains(link, "youtu") || strings.ContainsAny(link, "\"?&/<%=") {
-		matchers := []*regexp.Regexp{
-			regexp.MustCompile(`(?:v|embed|watch\?v)(?:=|/)([^"&?/=%]{11})`),
-			regexp.MustCompile(`(?:=|/)([^"&?/=%]{11})`),
-			regexp.MustCompile(`([^"&?/=%]{11})`),
-		}
-
-		for _, re := range matchers {
-			if isMatch := re.MatchString(link); isMatch {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
@@ -139,6 +119,20 @@ func (vc *VoiceClient) QueueVideo(query string) (string, error) {
 		}
 
 		query = resp.VideoId
+	}
+
+	// if it's a youtube playlist link
+	if playlistId, err := getYouTubePlayListIdFromURL(query); err == nil {
+		videos, err := playlistVideos(playlistId)
+		if err != nil {
+			return "", err
+		}
+
+		for _, videoId := range videos {
+			go vc.QueueVideo(videoId)
+		}
+
+		return "playlist found", nil
 	}
 
 	info, err := ytdl.GetVideoInfo(query)
