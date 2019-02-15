@@ -14,13 +14,17 @@ import (
 )
 
 var (
-	token  string
-	config Config
+	token      string
+	youtubeKey string
+	config     Config
 )
 
 func init() {
 	flag.StringVar(&token, "token", "", "Bot Token")
 	flag.StringVar(&token, "t", "", "Bot Token (shorthand)")
+
+	flag.StringVar(&youtubeKey, "youtube", "", "YouTube API Key")
+	flag.StringVar(&youtubeKey, "yt", "", "YouTube API Key (shorthand)")
 
 	flag.Parse()
 }
@@ -107,21 +111,35 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
+func configFlagOverrides() bool {
+	// override token with flag token
+	if token != "" {
+		config.BotToken = token
+	}
+
+	// override youtube api key with flag youtube
+	if youtubeKey != "" {
+		config.YouTubeKey = youtubeKey
+	}
+
+	// check if discord bot token exists
+	if config.BotToken == "" {
+		fmt.Println("No token provided. Please run: cocoabot -t <bot token>")
+		return false
+	}
+
+	// don't check for youtube api key
+	// as it isn't really required
+	// unless youtube search and playlist support is wanted
+
+	return true
+}
+
 func main() {
 	fmt.Println("cocoabot v1.0.0")
 
 	initConfig(&config)
-
-	// check if discord bot token exists
-	if config.BotToken == "" && token == "" {
-		fmt.Println("No token provided. Please run: cocoabot -t <bot token>")
-		return
-	}
-
-	// check if token was given as a cmd argument instead
-	if token != "" {
-		config.BotToken = token
-	}
+	configFlagOverrides()
 
 	dg, err := discordgo.New("Bot " + config.BotToken)
 	if err != nil {
