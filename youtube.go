@@ -32,26 +32,6 @@ func isYouTubeLink(link string) bool {
 	return false
 }
 
-func getYouTubePlayListIdFromURL(link string) (string, error) {
-	if !strings.Contains(link, "youtu") && !strings.Contains(link, "playlist") {
-		return "", fmt.Errorf("%s is not a valid youtube playlist URL", link)
-	}
-
-	playlistURL, err := url.Parse(link)
-	if err != nil {
-		return "", err
-	}
-
-	values := playlistURL.Query()
-	playlistId := values.Get("list")
-
-	if playlistId == "" {
-		return "", fmt.Errorf("%s has no valid youtube playlist Id", playlistURL.String())
-	}
-
-	return playlistId, nil
-}
-
 func searchByKeywords(keywords string) (YouTubeResult, error) {
 	// get youtube client
 	service, err := config.youtubeClient()
@@ -109,4 +89,24 @@ func playlistVideos(playlistId string) ([]string, error) {
 	}
 
 	return videos, nil
+}
+
+func getYouTubePlayListIdFromURL(link string) (string, error) {
+	if !strings.Contains(link, "youtu") && !strings.Contains(link, "playlist") {
+		return "", fmt.Errorf("%s is not a valid youtube playlist URL", link)
+	}
+
+	playlistURL, err := url.Parse(link)
+	if err != nil {
+		return "", err
+	}
+
+	values := playlistURL.Query()
+	playlistId := values.Get("list")
+
+	if playlistId == "" {
+		return "", fmt.Errorf("%s has no valid youtube playlist Id", playlistURL.String())
+	}
+
+	return playlistId, nil
 }
