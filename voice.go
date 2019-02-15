@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"strconv"
 	"time"
@@ -33,20 +32,6 @@ type VoiceClient struct {
 	skip       bool
 	stop       bool
 	isPlaying  bool
-}
-
-func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
-	if len(info.Formats) == 0 {
-		return &url.URL{}, errors.New("failed to get info from youtube")
-	}
-
-	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
-
-	// TODO: better selection of which format/stream
-	audioFormat := info.Formats[0]
-	link, err := info.GetDownloadURL(audioFormat)
-
-	return link, err
 }
 
 func newVoiceClient(d *discord) *VoiceClient {
@@ -103,54 +88,78 @@ func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
 
-func (vc *VoiceClient) QueueVideo(query string) (string, error) {
-	// if it's not a youtube link
-	// assume they're the title of a youtube video and search for it
+func (vc *VoiceClient) queueVideo(audioLink string) {
+	vc.queue.Enqueue(audioLink)
+	go vc.processQueue()
+}
+
+func (vc *VoiceClient) PlayQuery(query string) ([]string, error) {
+	// if the query is a youtube playlist link
+	// fetch the videos from the youtube api
+	if playlistId, err := getYouTubePlayListIdFromURL(query); err == nil {
+		videos, err := playlistVideos(playlistId)
+		if err != nil {
+			return []string{}, err
+		}
+
+		return vc.playYoutubeList(videos)
+	}
+
 	if !isYouTubeLink(query) {
 		// check if an API Key was configured
 		// if it isn't searching can't be done, so quit early
 		if config.YouTubeKey == "" {
-			return "", errors.New("youtube searching has not been configured, needs API key")
+			return []string{}, errors.New("youtube searching has not been configured, needs API key")
 		}
 
+		// if these are just words to search for
+		// search with the youtube api
 		resp, err := searchByKeywords(query)
 		if err != nil {
-			return "", err
+			return []string{}, err
 		}
 
 		query = resp.VideoId
 	}
 
-	// if it's a youtube playlist link
-	if playlistId, err := getYouTubePlayListIdFromURL(query); err == nil {
-		videos, err := playlistVideos(playlistId)
-		if err != nil {
-			return "", err
-		}
+	// if its just a regular youtube link
+	// pass it along
+	title, err := vc.playYoutubeWithId(query)
+	return []string{title}, err
+}
 
-		for _, videoId := range videos {
-			go vc.QueueVideo(videoId)
-		}
-
-		return "playlist found", nil
-	}
-
-	info, err := ytdl.GetVideoInfo(query)
+func (vc *VoiceClient) playYoutubeWithId(videoId string) (string, error) {
+	info, err := ytdl.GetVideoInfo(videoId)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, query)
+	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, videoId)
 
-	audioLink, err := getYouTubeAudioLink(info)
+	audioLink, err := getSortYouTubeAudioLink(info)
 	if err != nil {
 		return "", err
 	}
 
-	vc.queue.Enqueue(audioLink.String())
-	go vc.processQueue()
+	vc.queueVideo(audioLink.String())
 
 	return info.Title, nil
+}
+
+func (vc *VoiceClient) playYoutubeList(videos []string) ([]string, error) {
+	var titleVideos []string
+
+	for _, video := range videos {
+		title, err := vc.playYoutubeWithId(video)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		titleVideos = append(titleVideos, title)
+	}
+
+	return titleVideos, nil
 }
 
 func (vc *VoiceClient) playVideo(url string) {

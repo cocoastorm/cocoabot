@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rylio/ytdl"
 )
 
 type YouTubeResult struct {
@@ -109,4 +110,18 @@ func getYouTubePlayListIdFromURL(link string) (string, error) {
 	}
 
 	return playlistId, nil
+}
+
+func getSortYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
+	if len(info.Formats) == 0 {
+		return &url.URL{}, errors.New("failed to get info from youtube")
+	}
+
+	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
+
+	// TODO: better selection of which format/stream
+	audioFormat := info.Formats[0]
+	link, err := info.GetDownloadURL(audioFormat)
+
+	return link, err
 }
