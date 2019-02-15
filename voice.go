@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/oleiade/lane"
@@ -33,17 +34,14 @@ type VoiceClient struct {
 	isPlaying  bool
 }
 
-func getYoutubeDownloadLink(url string) (*url.URL, error) {
-	vid, err := ytdl.GetVideoInfo(url)
-	if err != nil {
-		return nil, err
-	}
+func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
+	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
 
-	vid.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
+	// TODO: better selection of which format/stream
+	audioFormat := info.Formats[0]
+	link, err := info.GetDownloadURL(audioFormat)
 
-	link, yterr := vid.GetDownloadURL(vid.Formats[0])
-
-	return link, yterr
+	return link, err
 }
 
 func newVoiceClient(d *discord) *VoiceClient {
@@ -69,6 +67,13 @@ func (vc *VoiceClient) connectVoice(guildId, channelId string) error {
 }
 
 func (vc *VoiceClient) Disconnect() {
+	if vc.isPlaying {
+		vc.StopVideo()
+
+		// wait a little bit~
+		time.Sleep(250 * time.Millisecond)
+	}
+
 	close(vc.pcmChannel)
 
 	if vc.voice != nil {
@@ -93,24 +98,29 @@ func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
 
-func (vc *VoiceClient) QueueVideo(youtubeLink string) {
-	fmt.Printf("Queuing Video: %s\n", youtubeLink)
-
-	link, err := getYoutubeDownloadLink(youtubeLink)
+func (vc *VoiceClient) QueueVideo(link string) (string, error) {
+	info, err := ytdl.GetVideoInfo(link)
 	if err != nil {
-		log.Println(err)
-		return
+		return "", err
 	}
 
-	log.Printf("[youtube] %s\n", youtubeLink)
+	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, link)
 
-	vc.queue.Enqueue(link.String())
-	vc.processQueue()
+	audioLink, err := getYouTubeAudioLink(info)
+	if err != nil {
+		return "", err
+	}
+
+	vc.queue.Enqueue(audioLink.String())
+	go vc.processQueue()
+
+	return info.Title, nil
 }
 
 func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
+	// fetch music stream with http
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println(err)
@@ -122,6 +132,7 @@ func (vc *VoiceClient) playVideo(url string) {
 		log.Println("status non-200")
 	}
 
+	// stream input to ffmpeg
 	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
 	run.Stdin = resp.Body
 
@@ -136,6 +147,8 @@ func (vc *VoiceClient) playVideo(url string) {
 		fmt.Printf("ffmpeg failed to start: %s\n", err.Error())
 		return
 	}
+
+	defer run.Process.Kill()
 
 	audiobuf := make([]int16, frameSize*channels)
 
@@ -156,7 +169,6 @@ func (vc *VoiceClient) playVideo(url string) {
 		}
 
 		if vc.stop == true || vc.skip == true {
-			run.Process.Kill()
 			log.Println("stopped playing")
 			break
 		}

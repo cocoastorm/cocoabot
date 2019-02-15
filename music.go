@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -51,6 +52,12 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		_, err := findOrCreate(discord, guild, channel)
 
 		if err != nil {
+			msg := msgVoiceJoinFail(m.Author)
+			if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
+				log.Println(err)
+				return err
+			}
+
 			return errors.Wrap(err, "failed to connect to voice channel")
 		}
 	}
@@ -72,7 +79,25 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 			return errors.Wrap(err, "failed to add song to queue")
 		}
 
-		client.QueueVideo(stripMessage("!play", m.Content))
+		originURL := stripMessage("!play", m.Content)
+		title, err := client.QueueVideo(originURL)
+
+		msg := msgQueueVideo(title)
+		if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
+			log.Println(err)
+			return err
+		}
+
+		if err != nil {
+			msg := msgQueueVideoFail(originURL)
+
+			if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
+				log.Println(err)
+				return err
+			}
+
+			return errors.Wrap(err, "failed to add song to queue")
+		}
 	}
 
 	if strings.Contains(m.Content, "resume") {

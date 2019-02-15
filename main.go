@@ -132,7 +132,7 @@ func main() {
 
 	err = dg.Open()
 	if err != nil {
-		err = errors.Wrap(err, "Failed opening Discord session")
+		err = errors.Wrap(err, "failed opening Discord session")
 		log.Println(err)
 	}
 
