@@ -113,14 +113,12 @@ func getYouTubePlayListIdFromURL(link string) (string, error) {
 }
 
 func getSortYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
-	if len(info.Formats) == 0 {
+	formats := info.Formats.Best(ytdl.FormatAudioEncodingKey)
+	if len(formats) == 0 {
 		return &url.URL{}, errors.New("failed to get info from youtube")
 	}
 
-	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
-
-	// TODO: better selection of which format/stream
-	audioFormat := info.Formats[0]
+	audioFormat := formats[0]
 	link, err := info.GetDownloadURL(audioFormat)
 
 	return link, err
