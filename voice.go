@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -90,7 +91,7 @@ func (vc *VoiceClient) SkipVideo() {
 
 func (vc *VoiceClient) queueVideo(audioLink string) {
 	vc.queue.Enqueue(audioLink)
-	go vc.processQueue()
+	vc.processQueue()
 }
 
 func (vc *VoiceClient) PlayQuery(query string) ([]string, error) {
@@ -169,13 +170,10 @@ func (vc *VoiceClient) playVideo(url string) {
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("http status %d (non-200)", resp.StatusCode)
-	}
 
 	// stream input to ffmpeg
 	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
@@ -186,6 +184,8 @@ func (vc *VoiceClient) playVideo(url string) {
 		fmt.Printf("ffmpeg failed to pipe out: %s\n", err.Error())
 		return
 	}
+
+	ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
 
 	err = run.Start()
 	if err != nil {
@@ -202,9 +202,14 @@ func (vc *VoiceClient) playVideo(url string) {
 
 	for {
 		// read data from ffmpeg
-		err = binary.Read(stdout, binary.LittleEndian, &audiobuf)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			log.Println("oops, failed playing", err)
+		err = binary.Read(ffmpegbuf, binary.LittleEndian, &audiobuf)
+		if err == io.EOF {
+			log.Println("oops, encountered the end too early", err)
+			break
+		}
+
+		if err == io.ErrUnexpectedEOF {
+			log.Println("oops, connection was closed", err)
 			break
 		}
 
@@ -233,7 +238,7 @@ func (vc *VoiceClient) processQueue() {
 		vc.skip = false
 		if link := vc.queue.Dequeue(); link != nil && !vc.stop {
 			vc.history.Enqueue(link.(string))
-			vc.playVideo(link.(string))
+			go vc.playVideo(link.(string))
 		} else {
 			break
 		}
