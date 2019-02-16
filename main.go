@@ -112,11 +112,13 @@ func main() {
 
 	initConfig(&config)
 
+	// check if discord bot token exists
 	if config.BotToken == "" && token == "" {
 		fmt.Println("No token provided. Please run: cocoabot -t <bot token>")
 		return
 	}
 
+	// check if token was given as a cmd argument instead
 	if token != "" {
 		config.BotToken = token
 	}
@@ -136,6 +138,8 @@ func main() {
 		log.Println(err)
 	}
 
+	defer dg.Close()
+
 	// wait here until CTRL-C or other term signal is received.
 	fmt.Println("cocoabot is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
@@ -146,6 +150,4 @@ func main() {
 	for _, client := range clients {
 		client.Disconnect()
 	}
-
-	dg.Close()
 }

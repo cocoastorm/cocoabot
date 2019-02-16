@@ -8,11 +8,14 @@ import (
 	"net/http"
 	"net/url"
 	"os/exec"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/oleiade/lane"
+	"github.com/pkg/errors"
 	"github.com/rylio/ytdl"
 )
 
@@ -34,7 +37,29 @@ type VoiceClient struct {
 	isPlaying  bool
 }
 
+func isYouTubeLink(link string) bool {
+	if strings.Contains(link, "youtu") || strings.ContainsAny(link, "\"?&/<%=") {
+		matchers := []*regexp.Regexp{
+			regexp.MustCompile(`(?:v|embed|watch\?v)(?:=|/)([^"&?/=%]{11})`),
+			regexp.MustCompile(`(?:=|/)([^"&?/=%]{11})`),
+			regexp.MustCompile(`([^"&?/=%]{11})`),
+		}
+
+		for _, re := range matchers {
+			if isMatch := re.MatchString(link); isMatch {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func getYouTubeAudioLink(info *ytdl.VideoInfo) (*url.URL, error) {
+	if len(info.Formats) == 0 {
+		return &url.URL{}, errors.New("failed to get info from youtube")
+	}
+
 	info.Formats.Sort(ytdl.FormatAudioEncodingKey, true)
 
 	// TODO: better selection of which format/stream
@@ -98,13 +123,30 @@ func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
 
-func (vc *VoiceClient) QueueVideo(link string) (string, error) {
-	info, err := ytdl.GetVideoInfo(link)
+func (vc *VoiceClient) QueueVideo(query string) (string, error) {
+	// if it's not a youtube link
+	// assume they're the title of a youtube video and search for it
+	if !isYouTubeLink(query) {
+		// check if an API Key was configured
+		// if it isn't searching can't be done, so quit early
+		if config.YouTubeKey == "" {
+			return "", errors.New("youtube searching has not been configured, needs API key")
+		}
+
+		resp, err := searchByKeywords(query)
+		if err != nil {
+			return "", err
+		}
+
+		query = resp.VideoId
+	}
+
+	info, err := ytdl.GetVideoInfo(query)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, link)
+	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, query)
 
 	audioLink, err := getYouTubeAudioLink(info)
 	if err != nil {
@@ -129,7 +171,7 @@ func (vc *VoiceClient) playVideo(url string) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Println("status non-200")
+		log.Printf("http status %d (non-200)", resp.StatusCode)
 	}
 
 	// stream input to ffmpeg
