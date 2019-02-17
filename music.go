@@ -11,6 +11,13 @@ import (
 
 var clients = make(map[string]*VoiceClient)
 
+type SongRequest struct {
+	SongQuery string
+	Title     string
+	ChannelId string
+	UserId    string
+}
+
 func find(guildId string) (*VoiceClient, error) {
 	client, ok := clients[guildId]
 	if !ok {
@@ -83,7 +90,14 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		}
 
 		originURL := stripMessage("!play", m.Content)
-		titles, err := client.PlayQuery(originURL)
+
+		songRequest := SongRequest{
+			SongQuery: originURL,
+			UserId:    m.Author.ID,
+			ChannelId: m.ChannelID,
+		}
+
+		titles, err := client.PlayQuery(songRequest)
 
 		if err != nil {
 			msg := msgQueueVideoFail(originURL)

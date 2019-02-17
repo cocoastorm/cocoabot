@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -89,24 +90,24 @@ func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
 
-func (vc *VoiceClient) queueVideo(audioLink string) {
-	vc.queue.Enqueue(audioLink)
+func (vc *VoiceClient) queueVideo(sq SongRequest) {
+	vc.queue.Enqueue(sq)
 	vc.processQueue()
 }
 
-func (vc *VoiceClient) PlayQuery(query string) ([]string, error) {
+func (vc *VoiceClient) PlayQuery(query SongRequest) ([]string, error) {
 	// if the query is a youtube playlist link
 	// fetch the videos from the youtube api
-	if playlistId, err := getYouTubePlayListIdFromURL(query); err == nil {
+	if playlistId, err := getYouTubePlayListIdFromURL(query.SongQuery); err == nil {
 		videos, err := playlistVideos(playlistId)
 		if err != nil {
 			return []string{}, err
 		}
 
-		return vc.playYoutubeList(videos)
+		return vc.playYoutubeList(videos, query)
 	}
 
-	if !isYouTubeLink(query) {
+	if !isYouTubeLink(query.SongQuery) {
 		// check if an API Key was configured
 		// if it isn't searching can't be done, so quit early
 		if config.YouTubeKey == "" {
@@ -115,12 +116,12 @@ func (vc *VoiceClient) PlayQuery(query string) ([]string, error) {
 
 		// if these are just words to search for
 		// search with the youtube api
-		resp, err := searchByKeywords(query)
+		resp, err := searchByKeywords(query.SongQuery)
 		if err != nil {
 			return []string{}, err
 		}
 
-		query = resp.VideoId
+		query.SongQuery = resp.VideoId
 	}
 
 	// if its just a regular youtube link
@@ -129,29 +130,38 @@ func (vc *VoiceClient) PlayQuery(query string) ([]string, error) {
 	return []string{title}, err
 }
 
-func (vc *VoiceClient) playYoutubeWithId(videoId string) (string, error) {
-	info, err := ytdl.GetVideoInfo(videoId)
+func (vc *VoiceClient) playYoutubeWithId(s SongRequest) (string, error) {
+	info, err := ytdl.GetVideoInfo(s.SongQuery)
 	if err != nil {
 		return "", err
 	}
 
-	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, videoId)
+	fmt.Printf("Queuing Video: %s [%s]\n", info.Title, s.SongQuery)
 
 	audioLink, err := getSortYouTubeAudioLink(info)
 	if err != nil {
 		return "", err
 	}
 
-	vc.queueVideo(audioLink.String())
+	s.Title = strings.TrimSpace(info.Title)
+	s.SongQuery = audioLink.String()
+
+	vc.queueVideo(s)
 
 	return info.Title, nil
 }
 
-func (vc *VoiceClient) playYoutubeList(videos []string) ([]string, error) {
+func (vc *VoiceClient) playYoutubeList(videos []string, sr SongRequest) ([]string, error) {
 	var titleVideos []string
 
 	for _, video := range videos {
-		title, err := vc.playYoutubeWithId(video)
+		request := SongRequest{
+			SongQuery: video,
+			ChannelId: sr.ChannelId,
+			UserId:    sr.UserId,
+		}
+
+		title, err := vc.playYoutubeWithId(request)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -229,6 +239,23 @@ func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = false
 }
 
+func (vc *VoiceClient) NowPlaying(sr SongRequest) {
+	var msg string
+
+	user, err := vc.discord.User(sr.UserId)
+	if err != nil {
+		msg = msgNowPlayingAnon(sr.Title)
+	} else {
+		msg = msgNowPlaying(sr.Title, user)
+	}
+
+	if _, err := vc.discord.ChannelMessageSend(sr.ChannelId, msg); err != nil {
+		log.Println(err)
+	}
+
+	log.Println(msg)
+}
+
 func (vc *VoiceClient) processQueue() {
 	if vc.isPlaying {
 		return
@@ -236,9 +263,13 @@ func (vc *VoiceClient) processQueue() {
 
 	for {
 		vc.skip = false
-		if link := vc.queue.Dequeue(); link != nil && !vc.stop {
-			vc.history.Enqueue(link.(string))
-			go vc.playVideo(link.(string))
+		if songRequest := vc.queue.Dequeue(); songRequest != nil && !vc.stop {
+			sr := songRequest.(SongRequest)
+
+			go vc.NowPlaying(sr)
+			go vc.playVideo(sr.SongQuery)
+
+			vc.history.Enqueue(sr.SongQuery)
 		} else {
 			break
 		}
