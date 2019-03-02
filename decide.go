@@ -53,7 +53,7 @@ Choices Given:
 		Choices: list,
 	}
 
-	buf := bytes.NewBuffer(nil)
+	buf := new(bytes.Buffer)
 	if err := t.Execute(buf, reply); err != nil {
 		log.Println("OH NOES!")
 		return "error, please try again later"
