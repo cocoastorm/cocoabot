@@ -13,10 +13,23 @@ import (
 	"github.com/pkg/errors"
 )
 
+type RoleList []string
+
+func (r *RoleList) String() string {
+	return "list of allowed roles"
+}
+
+func (r *RoleList) Set(role string) error {
+	*r = append(*r, role)
+	return nil
+}
+
 var (
+	config Config
+
 	token      string
 	youtubeKey string
-	config     Config
+	roles      RoleList
 )
 
 func init() {
@@ -25,6 +38,9 @@ func init() {
 
 	flag.StringVar(&youtubeKey, "youtube", "", "YouTube API Key")
 	flag.StringVar(&youtubeKey, "yt", "", "YouTube API Key (shorthand)")
+
+	flag.Var(&roles, "role", "role ID or name for usage access")
+	flag.Var(&roles, "r", "role ID or name for usage access (shorthand)")
 
 	flag.Parse()
 }
@@ -120,6 +136,13 @@ func configFlagOverrides() bool {
 	// override youtube api key with flag youtube
 	if youtubeKey != "" {
 		config.YouTubeKey = youtubeKey
+	}
+
+	// override allowed roles with flag role
+	if len(roles) > 0 {
+		for _, role := range roles {
+			config.Roles = append(config.Roles, role)
+		}
 	}
 
 	// check if discord bot token exists
