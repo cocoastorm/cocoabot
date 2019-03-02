@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -22,6 +21,8 @@ const (
 	channels  int = 2
 	frameRate int = 48000
 	frameSize int = 960
+
+	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
 )
 
 type VoiceClient struct {
@@ -176,18 +177,8 @@ func (vc *VoiceClient) playYoutubeList(videos []string, sr SongRequest) ([]strin
 func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
-	// fetch music stream with http
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	// stream input to ffmpeg
-	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
-	run.Stdin = resp.Body
+	// pass music stream url to ffmpeg
+	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User Agent: %s", userAgent), "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
 
 	stdout, err := run.StdoutPipe()
 	if err != nil {
