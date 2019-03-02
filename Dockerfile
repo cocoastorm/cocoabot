@@ -9,7 +9,7 @@ RUN go get -d -v
 
 RUN GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /go/bin/cocoabot
 
-FROM opencoconut/ffmpeg
+FROM jrottenberg/ffmpeg:4.1-alpine
 
 RUN apk update && apk add --no-cache ca-certificates
 
