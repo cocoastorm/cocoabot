@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -52,6 +53,11 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 
 	if err != nil {
 		return errors.Wrap(err, "failed to find origin of command")
+	}
+
+	re := regexp.MustCompile(`^!\w+\s(.*)`)
+	if matchCmd := re.MatchString(m.Content); !matchCmd {
+		return fmt.Errorf("invalid command: %s", m.Content)
 	}
 
 	// !summon
