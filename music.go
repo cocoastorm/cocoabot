@@ -120,16 +120,6 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		return nil
 	}
 
-	// !resume
-	if strings.Contains(m.Content, "resume") {
-		client, err := find(guild.ID)
-		if err != nil {
-			return nil
-		}
-
-		client.ResumeVideo()
-	}
-
 	// !stop
 	if strings.Contains(m.Content, "stop") {
 		client, err := find(guild.ID)

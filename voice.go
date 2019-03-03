@@ -28,7 +28,6 @@ const (
 type VoiceClient struct {
 	discord    *discord
 	voice      *discordgo.VoiceConnection
-	history    *lane.Queue
 	queue      *lane.Queue
 	pcmChannel chan []int16
 	serverId   string
@@ -40,7 +39,6 @@ type VoiceClient struct {
 func newVoiceClient(d *discord) *VoiceClient {
 	return &VoiceClient{
 		discord:    d,
-		history:    lane.NewQueue(),
 		queue:      lane.NewQueue(),
 		pcmChannel: make(chan []int16, 2),
 	}
@@ -71,15 +69,6 @@ func (vc *VoiceClient) Disconnect() {
 
 	if vc.voice != nil {
 		vc.voice.Disconnect()
-	}
-}
-
-func (vc *VoiceClient) ResumeVideo() {
-	vc.stop = false
-
-	link := vc.history.Dequeue()
-	if link != nil {
-		vc.playVideo(link.(string))
 	}
 }
 
@@ -259,8 +248,6 @@ func (vc *VoiceClient) processQueue() {
 
 			go vc.NowPlaying(sr)
 			go vc.playVideo(sr.SongQuery)
-
-			vc.history.Enqueue(sr.SongQuery)
 		} else {
 			break
 		}
