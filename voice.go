@@ -246,7 +246,13 @@ func (vc *VoiceClient) processQueue() {
 		if songRequest := vc.queue.Dequeue(); songRequest != nil && !vc.stop {
 			sr := songRequest.(SongRequest)
 
+			// send a message that the next song is playing
+			// to the original user who requested the song
 			go vc.NowPlaying(sr)
+
+			// NOTE: this should be blocking
+			// as we don't want multiple ffmpeg instances running for every song
+			// in the damn queue
 			vc.playVideo(sr.SongQuery)
 		} else {
 			break
