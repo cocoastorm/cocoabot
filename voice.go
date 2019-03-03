@@ -247,7 +247,7 @@ func (vc *VoiceClient) processQueue() {
 			sr := songRequest.(SongRequest)
 
 			go vc.NowPlaying(sr)
-			go vc.playVideo(sr.SongQuery)
+			vc.playVideo(sr.SongQuery)
 		} else {
 			break
 		}
