@@ -178,7 +178,7 @@ func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
 	// pass music stream url to ffmpeg
-	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
+	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-acodec", "pcm_s16le", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
 
 	stdout, err := run.StdoutPipe()
 	if err != nil {
