@@ -22,7 +22,7 @@ const (
 	frameRate int = 48000
 	frameSize int = 960
 
-	userAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
+	userAgent string = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
 )
 
 type VoiceClient struct {
@@ -178,7 +178,7 @@ func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
 	// pass music stream url to ffmpeg
-	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User Agent: %s", userAgent), "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
+	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
 
 	stdout, err := run.StdoutPipe()
 	if err != nil {
