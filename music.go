@@ -55,11 +55,6 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		return errors.Wrap(err, "failed to find origin of command")
 	}
 
-	re := regexp.MustCompile(`^!\w+\s(.*)`)
-	if matchCmd := re.MatchString(m.Content); !matchCmd {
-		return fmt.Errorf("invalid command: %s", m.Content)
-	}
-
 	// !summon
 	if strings.Contains(m.Content, "summon") {
 		guild, channel, err = discord.getUserVoiceChannel(m)
@@ -90,6 +85,11 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 
 	// !play
 	if strings.Contains(m.Content, "play") {
+		re := regexp.MustCompile(`^!play+\s(.*)`)
+		if matchPlay := re.MatchString(strings.TrimSpace(m.Content)); !matchPlay {
+			return fmt.Errorf("invalid command: %s", m.Content)
+		}
+
 		client, err := find(guild.ID)
 		if err != nil {
 			return errors.Wrap(err, "failed to add song to queue")
