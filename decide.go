@@ -32,13 +32,13 @@ func readDecide(line string) (string, []string) {
 
 func Decide(q string) string {
 	const replyTmpl = `
-### Decision
+Decision
 
 **{{ .Answer }}**
 
 Choices Given:
 {{ range .Choices }}
- - {{ . }}
+	* {{ . }}
 {{end}}
 `
 

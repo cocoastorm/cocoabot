@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -22,12 +21,13 @@ const (
 	channels  int = 2
 	frameRate int = 48000
 	frameSize int = 960
+
+	userAgent string = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
 )
 
 type VoiceClient struct {
 	discord    *discord
 	voice      *discordgo.VoiceConnection
-	history    *lane.Queue
 	queue      *lane.Queue
 	pcmChannel chan []int16
 	serverId   string
@@ -39,7 +39,6 @@ type VoiceClient struct {
 func newVoiceClient(d *discord) *VoiceClient {
 	return &VoiceClient{
 		discord:    d,
-		history:    lane.NewQueue(),
 		queue:      lane.NewQueue(),
 		pcmChannel: make(chan []int16, 2),
 	}
@@ -70,15 +69,6 @@ func (vc *VoiceClient) Disconnect() {
 
 	if vc.voice != nil {
 		vc.voice.Disconnect()
-	}
-}
-
-func (vc *VoiceClient) ResumeVideo() {
-	vc.stop = false
-
-	link := vc.history.Dequeue()
-	if link != nil {
-		vc.playVideo(link.(string))
 	}
 }
 
@@ -176,18 +166,8 @@ func (vc *VoiceClient) playYoutubeList(videos []string, sr SongRequest) ([]strin
 func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
-	// fetch music stream with http
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	// stream input to ffmpeg
-	run := exec.Command("ffmpeg", "-i", "-", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
-	run.Stdin = resp.Body
+	// pass music stream url to ffmpeg
+	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-acodec", "pcm_s16le", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
 
 	stdout, err := run.StdoutPipe()
 	if err != nil {
@@ -266,10 +246,14 @@ func (vc *VoiceClient) processQueue() {
 		if songRequest := vc.queue.Dequeue(); songRequest != nil && !vc.stop {
 			sr := songRequest.(SongRequest)
 
+			// send a message that the next song is playing
+			// to the original user who requested the song
 			go vc.NowPlaying(sr)
-			go vc.playVideo(sr.SongQuery)
 
-			vc.history.Enqueue(sr.SongQuery)
+			// NOTE: this should be blocking
+			// as we don't want multiple ffmpeg instances running for every song
+			// in the damn queue
+			vc.playVideo(sr.SongQuery)
 		} else {
 			break
 		}
