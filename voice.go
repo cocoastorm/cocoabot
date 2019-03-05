@@ -248,7 +248,7 @@ func (vc *VoiceClient) processQueue() {
 
 			// send a message that the next song is playing
 			// to the original user who requested the song
-			go vc.NowPlaying(sr)
+			vc.NowPlaying(sr)
 
 			// NOTE: this should be blocking
 			// as we don't want multiple ffmpeg instances running for every song
