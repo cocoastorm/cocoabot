@@ -111,7 +111,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func configFlagOverrides() bool {
+func configFlagOverrides() {
 	// override token with flag token
 	if token != "" {
 		config.BotToken = token
@@ -124,15 +124,12 @@ func configFlagOverrides() bool {
 
 	// check if discord bot token exists
 	if config.BotToken == "" {
-		fmt.Println("No token provided. Please run: cocoabot -t <bot token>")
-		return false
+		log.Fatalln("No token provided. Please run: cocoabot -t <bot token>")
 	}
 
 	// don't check for youtube api key
 	// as it isn't really required
 	// unless youtube search and playlist support is wanted
-
-	return true
 }
 
 func main() {
@@ -152,8 +149,7 @@ func main() {
 
 	err = dg.Open()
 	if err != nil {
-		err = errors.Wrap(err, "failed opening Discord session")
-		log.Println(err)
+		log.Fatal(errors.Wrap(err, "failed opening Discord session"))
 	}
 
 	defer dg.Close()
