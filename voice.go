@@ -245,12 +245,17 @@ func (vc *VoiceClient) processQueue() {
 		return
 	}
 
+	// if !stop was used sometime ago
+	// reset it
+	if vc.stop {
+		vc.stop = false
+	}
+
 	// strictly allow one goroutine to dequeue
 	vc.mutex.Lock()
 	defer vc.mutex.Unlock()
 
 	for {
-		vc.skip = false
 		if songRequest := vc.queue.Dequeue(); songRequest != nil && !vc.stop {
 			sr := songRequest.(SongRequest)
 
