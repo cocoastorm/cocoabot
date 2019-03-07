@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -29,6 +30,7 @@ type VoiceClient struct {
 	discord    *discord
 	voice      *discordgo.VoiceConnection
 	queue      *lane.Queue
+	mutex      sync.Mutex
 	pcmChannel chan []int16
 	serverId   string
 	skip       bool
@@ -82,7 +84,7 @@ func (vc *VoiceClient) SkipVideo() {
 
 func (vc *VoiceClient) queueVideo(sq SongRequest) {
 	vc.queue.Enqueue(sq)
-	vc.processQueue()
+	go vc.processQueue()
 }
 
 func (vc *VoiceClient) PlayQuery(query SongRequest) ([]string, error) {
@@ -237,9 +239,15 @@ func (vc *VoiceClient) NowPlaying(sr SongRequest) {
 }
 
 func (vc *VoiceClient) processQueue() {
+	// if music is currently playing
+	// exit early, as another goroutine is (most likely) accessing the queue
 	if vc.isPlaying {
 		return
 	}
+
+	// strictly allow one goroutine to dequeue
+	vc.mutex.Lock()
+	defer vc.mutex.Unlock()
 
 	for {
 		vc.skip = false
@@ -257,5 +265,7 @@ func (vc *VoiceClient) processQueue() {
 		} else {
 			break
 		}
+
+		vc.skip = false
 	}
 }
