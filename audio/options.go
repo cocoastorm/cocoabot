@@ -25,6 +25,7 @@ func (opts *AudioOptions) PCMFrameLen() int {
 
 func (opts *AudioOptions) FFmpegArgs() []string {
 	args := []string{
+		"-vol", "256",
 		"-b:a", strconv.Itoa(opts.Bitrate * 1000),
 		"-ac", strconv.Itoa(opts.Channels),
 		"-compression_level", strconv.Itoa(opts.CompressionLevel),
@@ -41,7 +42,7 @@ func (opts *AudioOptions) FFmpegArgs() []string {
 
 	if opts.WithSpoofedHeader {
 		args = append(args, []string{
-			"-headers",
+			"-header",
 			fmt.Sprintf("User-Agent: %s", userAgent),
 		}...)
 	}
@@ -59,6 +60,6 @@ func WithDefaults() *AudioOptions {
 		PacketLoss:        1,
 		BufferedFrames:    100,
 		VBR:               true,
-		WithSpoofedHeader: true,
+		WithSpoofedHeader: false,
 	}
 }

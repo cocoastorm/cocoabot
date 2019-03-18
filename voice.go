@@ -1,18 +1,14 @@
 package main
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"log"
-	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/khoanguyen96/cocoabot/audio"
 	"github.com/oleiade/lane"
 	"github.com/pkg/errors"
 	"github.com/rylio/ytdl"
@@ -165,60 +161,91 @@ func (vc *VoiceClient) playYoutubeList(videos []string, sr SongRequest) ([]strin
 	return titleVideos, nil
 }
 
+// func (vc *VoiceClient) playVideo(url string) {
+// 	vc.isPlaying = true
+
+// 	// pass music stream url to ffmpeg
+// 	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-acodec", "pcm_s16le", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
+
+// 	stdout, err := run.StdoutPipe()
+// 	if err != nil {
+// 		fmt.Printf("ffmpeg failed to pipe out: %s\n", err.Error())
+// 		return
+// 	}
+
+// 	ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
+
+// 	err = run.Start()
+// 	if err != nil {
+// 		fmt.Printf("ffmpeg failed to start: %s\n", err.Error())
+// 		return
+// 	}
+
+// 	defer run.Process.Kill()
+
+// 	audiobuf := make([]int16, frameSize*channels)
+
+// 	vc.voice.Speaking(true)
+// 	defer vc.voice.Speaking(false)
+
+// 	for {
+// 		// read data from ffmpeg
+// 		err = binary.Read(ffmpegbuf, binary.LittleEndian, &audiobuf)
+// 		if err == io.EOF {
+// 			log.Println("oops, encountered the end too early", err)
+// 			break
+// 		}
+
+// 		if err == io.ErrUnexpectedEOF {
+// 			log.Println("oops, connection was closed", err)
+// 			break
+// 		}
+
+// 		if err != nil {
+// 			log.Println("oops, failed playing", err)
+// 			break
+// 		}
+
+// 		if vc.stop == true || vc.skip == true {
+// 			log.Println("stopped playing")
+// 			break
+// 		}
+
+// 		vc.pcmChannel <- audiobuf
+// 	}
+
+// 	vc.isPlaying = false
+// }
+
 func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
-	// pass music stream url to ffmpeg
-	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-acodec", "pcm_s16le", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
-
-	stdout, err := run.StdoutPipe()
-	if err != nil {
-		fmt.Printf("ffmpeg failed to pipe out: %s\n", err.Error())
-		return
-	}
-
-	ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
-
-	err = run.Start()
-	if err != nil {
-		fmt.Printf("ffmpeg failed to start: %s\n", err.Error())
-		return
-	}
-
-	defer run.Process.Kill()
-
-	audiobuf := make([]int16, frameSize*channels)
+	opts := audio.WithDefaults()
+	encoding := audio.Encode(url, opts)
 
 	vc.voice.Speaking(true)
-	defer vc.voice.Speaking(false)
+
+	defer func() {
+		vc.isPlaying = false
+		vc.voice.Speaking(false)
+	}()
 
 	for {
-		// read data from ffmpeg
-		err = binary.Read(ffmpegbuf, binary.LittleEndian, &audiobuf)
-		if err == io.EOF {
-			log.Println("oops, encountered the end too early", err)
-			break
-		}
-
-		if err == io.ErrUnexpectedEOF {
-			log.Println("oops, connection was closed", err)
-			break
-		}
-
+		frame, err := encoding.OpusFrame()
 		if err != nil {
-			log.Println("oops, failed playing", err)
+			log.Println(err)
 			break
 		}
 
-		if vc.stop == true || vc.skip == true {
-			log.Println("stopped playing")
+		if vc.stop || vc.skip {
+			log.Println("stopped")
 			break
 		}
 
-		vc.pcmChannel <- audiobuf
+		fmt.Println(frame)
+
+		vc.voice.OpusSend <- frame
 	}
-
-	vc.isPlaying = false
 }
 
 func (vc *VoiceClient) NowPlaying(sr SongRequest) {
