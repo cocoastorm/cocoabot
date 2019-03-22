@@ -44,19 +44,19 @@ func (e *Encoding) encodeArgs() []string {
 }
 
 func (e *Encoding) start() {
-	e.mu.Lock()
-
-	// reset state at the end
 	defer func() {
 		e.running = false
 		e.mu.Unlock()
 	}()
 
 	args := e.encodeArgs()
-
-	fmt.Println(args)
-
 	run := exec.Command("ffmpeg", args...)
+
+	log.Printf("ffmpeg args: %v", args)
+
+	// ready? set? go!
+	e.mu.Lock()
+	e.running = true
 
 	stdout, err := run.StdoutPipe()
 	if err != nil {
@@ -65,39 +65,34 @@ func (e *Encoding) start() {
 	}
 
 	// debug stderr
-	stderr, err := run.StderrPipe()
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	// stderr, err := run.StderrPipe()
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
 
-	bufstderr := new(bytes.Buffer)
+	// bufstderr := new(bytes.Buffer)
 
 	// ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
 
 	err = run.Start()
 	defer run.Process.Kill()
 
-	e.mu.Unlock()
-
 	if err != nil {
 		fmt.Printf("ffmpeg failed to start: %s\n", err.Error())
 		return
 	}
 
-	bufstderr.ReadFrom(stderr)
-	fmt.Println(bufstderr.String())
+	// debug ffmpeg stderr
+	// bufstderr.ReadFrom(stderr)
+	// fmt.Println(bufstderr.String())
 
 	decoder := ogg.NewPacketDecoder(ogg.NewDecoder(stdout))
 	skip := 2
 
-	fmt.Println(skip)
-
 	for {
-		buf := new(bytes.Buffer)
+		audiobuf := new(bytes.Buffer)
 		packet, _, err := decoder.Decode()
-
-		fmt.Println(packet)
 
 		if err != nil {
 			log.Println(err)
@@ -106,24 +101,24 @@ func (e *Encoding) start() {
 
 		// skip the ogg metadata packets
 		if skip > 0 {
-			fmt.Println("skip")
+			fmt.Printf("skipping packet: %d\n", skip)
 			skip--
 			continue
 		}
 
-		err = binary.Write(buf, binary.LittleEndian, int16(len(packet)))
+		err = binary.Write(audiobuf, binary.LittleEndian, int16(len(packet)))
 		if err != nil {
 			log.Println(err)
 			break
 		}
 
-		_, err = buf.Write(packet)
+		_, err = audiobuf.Write(packet)
 		if err != nil {
 			log.Println(err)
 			break
 		}
 
-		e.frameChannel <- Frame(buf.Bytes())
+		e.frameChannel <- Frame(audiobuf.Bytes())
 
 		// select {
 		// case <-e.stop:
@@ -137,11 +132,11 @@ func (e *Encoding) start() {
 		// e.mu.Unlock()
 	}
 
-	err = run.Wait()
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	// err = run.Wait()
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return
+	// }
 }
 
 func Encode(input string, opts *AudioOptions) *Encoding {

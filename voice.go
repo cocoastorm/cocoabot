@@ -220,8 +220,7 @@ func (vc *VoiceClient) playYoutubeList(videos []string, sr SongRequest) ([]strin
 func (vc *VoiceClient) playVideo(url string) {
 	vc.isPlaying = true
 
-	opts := audio.WithDefaults()
-	encoding := audio.Encode(url, opts)
+	encoding := audio.Encode(url, audio.WithDefaults())
 
 	vc.voice.Speaking(true)
 
@@ -233,7 +232,8 @@ func (vc *VoiceClient) playVideo(url string) {
 	for {
 		frame, err := encoding.OpusFrame()
 		if err != nil {
-			log.Println(err)
+			// log.Println(err)
+			log.Fatal(err)
 			break
 		}
 
@@ -241,8 +241,6 @@ func (vc *VoiceClient) playVideo(url string) {
 			log.Println("stopped")
 			break
 		}
-
-		fmt.Println(frame)
 
 		vc.voice.OpusSend <- frame
 	}
