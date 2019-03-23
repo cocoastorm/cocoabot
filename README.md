@@ -8,10 +8,7 @@ Huge thanks to [DiscordGo](https://github.com/bwmarrin/discordgo) for the painle
 
 ## Building
 
-layeh.com/gopus is a dependency that requires a 64-bit gcc compiler.
-
-If you're on Windows, install [TDM-GCC](http://tdm-gcc.tdragon.net/) (64-bit) and add it to PATH.
-If you're on Linux or macOS, have `gcc` installed.
+cocoabot relies on [FFmpeg](https://ffmpeg.org/) for audio encoding. In particular, it relies on the opus codec, please have FFmpeg compiled with `--enable-libopus`.
 
 ```
 go get
