@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"strings"
 	"sync"
@@ -161,7 +162,9 @@ func (vc *VoiceClient) playVideo(url string) {
 	for {
 		frame, err := encoding.OpusFrame()
 		if err != nil {
-			log.Println(err)
+			if err != io.EOF {
+				log.Println(err)
+			}
 			break
 		}
 
