@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/khoanguyen96/cocoabot/decision"
 	"github.com/pkg/errors"
 )
 
@@ -84,7 +85,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// check if the message is the "decide" command
 	if strings.Contains(m.Content, "!decide") {
-		decision := Decide(strings.TrimPrefix(m.Content, "!decide"))
+		decision := decision.Decide(strings.TrimPrefix(m.Content, "!decide"))
 
 		_, err := s.ChannelMessageSend(m.ChannelID, decision)
 		if err != nil {
