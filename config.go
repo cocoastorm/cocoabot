@@ -23,7 +23,7 @@ func initConfig(c *Config) {
 	c.YouTubeKey = os.Getenv("YOUTUBE_KEY")
 	c.Roles = []string{
 		"music",
-		"musiclover",
+		"music lover",
 	}
 }
 
