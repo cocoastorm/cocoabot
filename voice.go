@@ -15,6 +15,7 @@ import (
 	"github.com/rylio/ytdl"
 )
 
+// VoiceClient is a custom voice instance for a Discord voice channel.
 type VoiceClient struct {
 	discord   *discord
 	voice     *discordgo.VoiceConnection
@@ -44,6 +45,7 @@ func (vc *VoiceClient) connectVoice(guildId, channelId string) error {
 	return nil
 }
 
+// Disconnect tells the bot to disconnect from the voice channel.
 func (vc *VoiceClient) Disconnect() {
 	if vc.isPlaying {
 		vc.StopVideo()
@@ -57,10 +59,12 @@ func (vc *VoiceClient) Disconnect() {
 	}
 }
 
+// StopVideo tells the bot to stop the current song and clear the queue.
 func (vc *VoiceClient) StopVideo() {
 	vc.stop = true
 }
 
+// SkipVideo tells the bot to skip the current song and go to the next song in the queue.
 func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
@@ -70,6 +74,7 @@ func (vc *VoiceClient) queueVideo(sq SongRequest) {
 	go vc.processQueue()
 }
 
+// PlayQuery takes a SongRequest and attempts to search and play it.
 func (vc *VoiceClient) PlayQuery(query SongRequest) ([]string, error) {
 	// if the query is a youtube playlist link
 	// fetch the videos from the youtube api
@@ -182,6 +187,7 @@ func (vc *VoiceClient) playVideo(url string) {
 	}
 }
 
+// NowPlaying tracks the voice channel and sends a message about the current song playing.
 func (vc *VoiceClient) NowPlaying(sr SongRequest) {
 	var msg string
 

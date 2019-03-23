@@ -10,6 +10,7 @@ import (
 	"github.com/rylio/ytdl"
 )
 
+// YouTubeResult represents a Youtube Video from a search.
 type YouTubeResult struct {
 	Title   string
 	VideoId string
