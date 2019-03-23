@@ -2,8 +2,8 @@ FROM golang:alpine as builder
 
 RUN apk update && apk add --no-cache build-base git
 
-COPY . $GOPATH/src/git.cocoastorm.com/khoa/cocoabot
-WORKDIR $GOPATH/src/git.cocoastorm.com/khoa/cocoabot
+COPY . $GOPATH/src/github.com/khoanguyen96/cocoabot
+WORKDIR $GOPATH/src/github.com/khoanguyen96/cocoabot
 
 RUN go get -d -v
 
