@@ -1,48 +1,36 @@
 package main
 
 import (
-	"bufio"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
-	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/khoanguyen96/cocoabot/audio"
 	"github.com/oleiade/lane"
 	"github.com/pkg/errors"
 	"github.com/rylio/ytdl"
 )
 
-const (
-	channels  int = 2
-	frameRate int = 48000
-	frameSize int = 960
-
-	userAgent string = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
-)
-
+// VoiceClient is a custom voice instance for a Discord voice channel.
 type VoiceClient struct {
-	discord    *discord
-	voice      *discordgo.VoiceConnection
-	queue      *lane.Queue
-	mutex      sync.Mutex
-	pcmChannel chan []int16
-	serverId   string
-	skip       bool
-	stop       bool
-	isPlaying  bool
+	discord   *discord
+	voice     *discordgo.VoiceConnection
+	queue     *lane.Queue
+	mutex     sync.Mutex
+	serverId  string
+	skip      bool
+	stop      bool
+	isPlaying bool
 }
 
 func newVoiceClient(d *discord) *VoiceClient {
 	return &VoiceClient{
-		discord:    d,
-		queue:      lane.NewQueue(),
-		pcmChannel: make(chan []int16, 2),
+		discord: d,
+		queue:   lane.NewQueue(),
 	}
 }
 
@@ -54,11 +42,10 @@ func (vc *VoiceClient) connectVoice(guildId, channelId string) error {
 
 	vc.voice = voice
 
-	go SendPCM(vc.voice, vc.pcmChannel)
-
 	return nil
 }
 
+// Disconnect tells the bot to disconnect from the voice channel.
 func (vc *VoiceClient) Disconnect() {
 	if vc.isPlaying {
 		vc.StopVideo()
@@ -67,17 +54,17 @@ func (vc *VoiceClient) Disconnect() {
 		time.Sleep(250 * time.Millisecond)
 	}
 
-	close(vc.pcmChannel)
-
 	if vc.voice != nil {
 		vc.voice.Disconnect()
 	}
 }
 
+// StopVideo tells the bot to stop the current song and clear the queue.
 func (vc *VoiceClient) StopVideo() {
 	vc.stop = true
 }
 
+// SkipVideo tells the bot to skip the current song and go to the next song in the queue.
 func (vc *VoiceClient) SkipVideo() {
 	vc.skip = true
 }
@@ -87,6 +74,7 @@ func (vc *VoiceClient) queueVideo(sq SongRequest) {
 	go vc.processQueue()
 }
 
+// PlayQuery takes a SongRequest and attempts to search and play it.
 func (vc *VoiceClient) PlayQuery(query SongRequest) ([]string, error) {
 	// if the query is a youtube playlist link
 	// fetch the videos from the youtube api
@@ -166,61 +154,40 @@ func (vc *VoiceClient) playYoutubeList(videos []string, sr SongRequest) ([]strin
 }
 
 func (vc *VoiceClient) playVideo(url string) {
+	encoding := audio.Encode(url, audio.WithDefaults())
+
 	vc.isPlaying = true
-
-	// pass music stream url to ffmpeg
-	run := exec.Command("ffmpeg", "-i", url, "-headers", fmt.Sprintf("User-Agent: %s", userAgent), "-acodec", "pcm_s16le", "-f", "s16le", "-ar", strconv.Itoa(frameRate), "-ac", strconv.Itoa(channels), "pipe:1")
-
-	stdout, err := run.StdoutPipe()
-	if err != nil {
-		fmt.Printf("ffmpeg failed to pipe out: %s\n", err.Error())
-		return
-	}
-
-	ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
-
-	err = run.Start()
-	if err != nil {
-		fmt.Printf("ffmpeg failed to start: %s\n", err.Error())
-		return
-	}
-
-	defer run.Process.Kill()
-
-	audiobuf := make([]int16, frameSize*channels)
-
 	vc.voice.Speaking(true)
-	defer vc.voice.Speaking(false)
+
+	defer func() {
+		vc.isPlaying = false
+		vc.voice.Speaking(false)
+	}()
 
 	for {
-		// read data from ffmpeg
-		err = binary.Read(ffmpegbuf, binary.LittleEndian, &audiobuf)
-		if err == io.EOF {
-			log.Println("oops, encountered the end too early", err)
-			break
-		}
-
-		if err == io.ErrUnexpectedEOF {
-			log.Println("oops, connection was closed", err)
-			break
-		}
-
+		frame, err := encoding.OpusFrame()
 		if err != nil {
-			log.Println("oops, failed playing", err)
+			if err != io.EOF {
+				log.Println(err)
+			}
 			break
 		}
 
-		if vc.stop == true || vc.skip == true {
-			log.Println("stopped playing")
+		if vc.stop {
+			log.Println("stop")
 			break
 		}
 
-		vc.pcmChannel <- audiobuf
+		if vc.skip {
+			log.Println("skip")
+			break
+		}
+
+		vc.voice.OpusSend <- frame
 	}
-
-	vc.isPlaying = false
 }
 
+// NowPlaying tracks the voice channel and sends a message about the current song playing.
 func (vc *VoiceClient) NowPlaying(sr SongRequest) {
 	var msg string
 
@@ -261,7 +228,7 @@ func (vc *VoiceClient) processQueue() {
 
 			// send a message that the next song is playing
 			// to the original user who requested the song
-			go vc.NowPlaying(sr)
+			vc.NowPlaying(sr)
 
 			// NOTE: this should be blocking
 			// as we don't want multiple ffmpeg instances running for every song

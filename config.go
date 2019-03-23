@@ -8,6 +8,7 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
+// Config is the main values required by the bot.
 type Config struct {
 	BotToken   string
 	YouTubeKey string
@@ -23,7 +24,7 @@ func initConfig(c *Config) {
 	c.YouTubeKey = os.Getenv("YOUTUBE_KEY")
 	c.Roles = []string{
 		"music",
-		"musiclover",
+		"music lover",
 	}
 }
 

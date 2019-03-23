@@ -12,6 +12,7 @@ import (
 
 var clients = make(map[string]*VoiceClient)
 
+// SongRequest represents a play query including metainfo of what user and channel.
 type SongRequest struct {
 	SongQuery string
 	Title     string
@@ -22,7 +23,7 @@ type SongRequest struct {
 func find(guildId string) (*VoiceClient, error) {
 	client, ok := clients[guildId]
 	if !ok {
-		return nil, fmt.Errorf("failed to find voice client with guild id %s\n", guildId)
+		return nil, fmt.Errorf("failed to find voice client with guild id %s", guildId)
 	}
 
 	return client, nil
