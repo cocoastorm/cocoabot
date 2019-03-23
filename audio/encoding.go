@@ -48,6 +48,7 @@ func (e *Encoding) start() {
 	defer func() {
 		e.running = false
 		e.mu.Unlock()
+		close(e.frameChannel)
 	}()
 
 	args := e.encodeArgs()
