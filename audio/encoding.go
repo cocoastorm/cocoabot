@@ -1,6 +1,7 @@
 package audio
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
@@ -24,7 +25,7 @@ type Encoding struct {
 	ffmpegProcess *os.Process
 	running       bool
 	stop          chan bool
-	lastframe     int
+	framePosition int
 }
 
 func (e *Encoding) encodeArgs() []string {
@@ -73,7 +74,8 @@ func (e *Encoding) start() {
 
 	// bufstderr := new(bytes.Buffer)
 
-	// ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
+	// buffer with 16KB
+	ffmpegbuf := bufio.NewReaderSize(stdout, 16384)
 
 	err = run.Start()
 	defer run.Process.Kill()
@@ -84,10 +86,11 @@ func (e *Encoding) start() {
 	}
 
 	// debug ffmpeg stderr
+	// this blocks, don't use it
 	// bufstderr.ReadFrom(stderr)
-	// fmt.Println(bufstderr.String())
+	// log.Println(bufstderr.String())
 
-	decoder := ogg.NewPacketDecoder(ogg.NewDecoder(stdout))
+	decoder := ogg.NewPacketDecoder(ogg.NewDecoder(ffmpegbuf))
 	skip := 2
 
 	for {
@@ -119,24 +122,15 @@ func (e *Encoding) start() {
 		}
 
 		e.frameChannel <- Frame(audiobuf.Bytes())
+		e.framePosition++
 
-		// select {
-		// case <-e.stop:
-		// 	break
-		// default:
-		// 	continue
-		// }
-
-		// e.mu.Lock()
-		// e.lastframe++
-		// e.mu.Unlock()
+		select {
+		case <-e.stop:
+			break
+		default:
+			continue
+		}
 	}
-
-	// err = run.Wait()
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return
-	// }
 }
 
 func Encode(input string, opts *AudioOptions) *Encoding {
