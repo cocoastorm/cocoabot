@@ -56,8 +56,6 @@ func (e *Encoding) start() {
 	args := e.encodeArgs()
 	run := exec.Command("ffmpeg", args...)
 
-	log.Printf("ffmpeg args: %v", args)
-
 	// ready? set? go!
 	e.mu.Lock()
 	e.running = true
@@ -107,7 +105,6 @@ func (e *Encoding) start() {
 
 		// skip the ogg metadata packets
 		if skip > 0 {
-			fmt.Printf("skipping packet: %d\n", skip)
 			skip--
 			continue
 		}
