@@ -8,6 +8,7 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
+// Config is the main values required by the bot.
 type Config struct {
 	BotToken   string
 	YouTubeKey string
