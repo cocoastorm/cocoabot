@@ -15,8 +15,10 @@ import (
 	"github.com/jonas747/ogg"
 )
 
+// Frame is an encoded packet frame.
 type Frame []byte
 
+// Encoding is responsible for handling the audio encoding process.
 type Encoding struct {
 	mu            sync.Mutex
 	options       *AudioOptions
@@ -134,6 +136,7 @@ func (e *Encoding) start() {
 	}
 }
 
+// Encode creates and starts the Encoding
 func Encode(input string, opts *AudioOptions) *Encoding {
 	e := &Encoding{
 		input:        input,
@@ -147,6 +150,7 @@ func Encode(input string, opts *AudioOptions) *Encoding {
 	return e
 }
 
+// OpusFrame returns a frame of opus byte data.
 func (e *Encoding) OpusFrame() (frame []byte, err error) {
 	f := <-e.frameChannel
 	if f == nil {
@@ -160,6 +164,7 @@ func (e *Encoding) OpusFrame() (frame []byte, err error) {
 	return f[2:], nil
 }
 
+// Stop halts the encoding process.
 func (e *Encoding) Stop() {
 	e.stop <- true
 }

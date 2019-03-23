@@ -5,6 +5,7 @@ import (
 	"strconv"
 )
 
+// AudioOptions are the encoding options
 type AudioOptions struct {
 	Bitrate           int
 	Channels          int
@@ -19,10 +20,12 @@ type AudioOptions struct {
 
 const userAgent string = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36"
 
+// PCMFrameLen returns the length of the PCM Frame
 func (opts *AudioOptions) PCMFrameLen() int {
 	return 960 * opts.Channels * (opts.FrameDuration / 20)
 }
 
+// FFmpegArgs transforms the options into usable args for FFmpeg
 func (opts *AudioOptions) FFmpegArgs() []string {
 	args := []string{
 		"-vol", "256",
@@ -50,6 +53,7 @@ func (opts *AudioOptions) FFmpegArgs() []string {
 	return args
 }
 
+// WithDefaults returns the default AudioOptions
 func WithDefaults() *AudioOptions {
 	return &AudioOptions{
 		Bitrate:           64,
