@@ -91,7 +91,8 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 			return fmt.Errorf("invalid command: %s", m.Content)
 		}
 
-		client, err := find(guild.ID)
+		guild, channel, err = discord.getUserVoiceChannel(m)
+		client, err := findOrCreate(discord, guild, channel)
 		if err != nil {
 			return errors.Wrap(err, "failed to add song to queue")
 		}
