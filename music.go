@@ -64,7 +64,6 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 		if err != nil {
 			msg := msgVoiceJoinFail(m.Author)
 			if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
-				log.Println(err)
 				return err
 			}
 
@@ -111,7 +110,6 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 			msg := msgQueueVideoFail(originURL)
 
 			if _, err := s.ChannelMessageSend(m.ChannelID, msg); err != nil {
-				log.Println(err)
 				return err
 			}
 
@@ -132,7 +130,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 	if strings.Contains(m.Content, "stop") {
 		client, err := find(guild.ID)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		client.StopVideo()
@@ -142,7 +140,7 @@ func musicHandler(s *discordgo.Session, m *discordgo.MessageCreate) error {
 	if strings.Contains(m.Content, "skip") {
 		client, err := find(guild.ID)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		client.SkipVideo()
