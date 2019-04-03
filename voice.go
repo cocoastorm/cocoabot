@@ -59,6 +59,16 @@ func (vc *VoiceClient) Disconnect() {
 	}
 }
 
+func (vc *VoiceClient) timeoutDisconnect() {
+	if vc.isPlaying {
+		return
+	}
+
+	if vc.voice != nil {
+		vc.voice.Disconnect()
+	}
+}
+
 // StopVideo tells the bot to stop the current song and clear the queue.
 func (vc *VoiceClient) StopVideo() {
 	vc.stop = true
@@ -221,6 +231,7 @@ func (vc *VoiceClient) processQueue() {
 	// strictly allow one goroutine to dequeue
 	vc.mutex.Lock()
 	defer vc.mutex.Unlock()
+	defer time.AfterFunc(15*time.Minute, vc.timeoutDisconnect)
 
 	for {
 		if songRequest := vc.queue.Dequeue(); songRequest != nil && !vc.stop {
