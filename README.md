@@ -1,4 +1,6 @@
 # cocoabot
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fkhoanguyen96%2Fcocoabot.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fkhoanguyen96%2Fcocoabot?ref=badge_shield)
+
 A relatively simple music bot for Discord.
 
 Huge shout out to [SpeakerBot](https://github.com/dustinblackman/speakerbot)
@@ -32,3 +34,6 @@ If you notice any bugs or want a new feature, PRs are more than welcome. :)
 
 ## LICENSE
 [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.en.html)
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fkhoanguyen96%2Fcocoabot.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fkhoanguyen96%2Fcocoabot?ref=badge_large)
